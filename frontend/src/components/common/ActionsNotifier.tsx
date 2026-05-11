@@ -88,7 +88,21 @@ function PureActionsNotifier({ dispatch, clusterActions }: PureActionsNotifierPr
 
       if (!snackbarRefs.current[refKey]) {
         snackbarRefs.current[refKey] = uniqueKey;
-        enqueueSnackbar(clusterAction.message, {
+        const lines = clusterAction.message.split('\n');
+        const messageNode =
+          lines.length > 1 ? (
+            <span>
+              {lines.map((line, i) => (
+                <React.Fragment key={i}>
+                  {line}
+                  {i < lines.length - 1 && <br />}
+                </React.Fragment>
+              ))}
+            </span>
+          ) : (
+            clusterAction.message
+          );
+        enqueueSnackbar(messageNode, {
           key: uniqueKey,
           autoHideDuration: clusterAction.autoHideDuration || CLUSTER_ACTION_GRACE_PERIOD,
           action,
