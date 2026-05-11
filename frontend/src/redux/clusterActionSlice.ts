@@ -239,7 +239,18 @@ export const executeClusterAction = createAsyncThunk(
     function dispatchError(err?: Error | string | null) {
       let message = errorMessage || '';
       if (err) {
-        const originalMessage = typeof err === 'string' ? err : err.message;
+        const rawMessage = typeof err === 'string' ? err : err.message;
+        const originalMessage = rawMessage
+          ? rawMessage
+              .replace(/,?\s*regex used for validation is '[^']*'/g, '')
+              .replace(/\[([^\]]+)\]/, (_match, inner) =>
+                inner
+                  .split(/,\s*(?=\w[\w.]*:)/)
+                  .map((s: string) => `• ${s.trim()}`)
+                  .join('\n')
+              )
+              .trim()
+          : rawMessage;
         if (originalMessage) {
           const separator = message ? (message.endsWith('.') ? ' ' : '. ') : '';
           message = `${message}${separator}${originalMessage}`;
