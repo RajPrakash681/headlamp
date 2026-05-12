@@ -160,6 +160,73 @@ export const EmptySelection: StoryFn = () => (
   <ResourceTableMultiActions table={makeMockTable([])} />
 );
 
+// Open scale dialog
+export const ScaleDialogOpen: StoryObj = {
+  render: () => <ResourceTableMultiActions table={makeMockTable([mockDeployment])} />,
+  parameters: {
+    storyshots: {
+      disable: true,
+    },
+  },
+  play: async () => {
+    await userEvent.click(screen.getByLabelText('Scale items'));
+
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'Scale items' })).toBeVisible());
+
+    expect(screen.getByText(/deployment/i)).toBeVisible();
+  },
+};
+
+// Cancel scale dialog
+export const ScaleDialogCancel: StoryObj = {
+  render: () => <ResourceTableMultiActions table={makeMockTable([mockDeployment])} />,
+  parameters: {
+    storyshots: {
+      disable: true,
+    },
+  },
+  play: async () => {
+    await userEvent.click(screen.getByLabelText('Scale items'));
+
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'Scale items' })).toBeVisible());
+
+    await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Scale items' })).not.toBeInTheDocument()
+    );
+  },
+};
+
+// Confirm scale for multiple items
+export const ScaleMultipleConfirm: StoryObj = {
+  render: () => (
+    <ResourceTableMultiActions
+      table={makeMockTable([mockDeployment, mockStatefulSet, mockReplicaSet])}
+    />
+  ),
+  parameters: {
+    storyshots: {
+      disable: true,
+    },
+  },
+  play: async () => {
+    await userEvent.click(screen.getByLabelText('Scale items'));
+
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'Scale items' })).toBeVisible());
+
+    expect(screen.getByText(/deployment/i)).toBeVisible();
+    expect(screen.getByText(/statefulset/i)).toBeVisible();
+    expect(screen.getByText(/replicaset/i)).toBeVisible();
+
+    await userEvent.click(screen.getByRole('button', { name: /apply/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Scale items' })).not.toBeInTheDocument()
+    );
+  },
+};
+
 // Open delete confirmation dialogue
 export const DeleteConfirmationDialogOpen: StoryObj = {
   render: () => <ResourceTableMultiActions table={makeMockTable([mockDeployment])} />,
