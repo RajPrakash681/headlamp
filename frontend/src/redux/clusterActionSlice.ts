@@ -241,15 +241,21 @@ export const executeClusterAction = createAsyncThunk(
       if (err) {
         const rawMessage = typeof err === 'string' ? err : err.message;
         const originalMessage = rawMessage
-          ? rawMessage
-              .replace(/,?\s*regex used for validation is '[^']*'/g, '')
-              .replace(/\[([^\]]+)\]/, (_match, inner) =>
-                inner
-                  .split(/,\s*(?=\w[\w.]*:)/)
+          ? (() => {
+              const cleaned = rawMessage.replace(/,?\s*regex used for validation is '[^']*'/g, '');
+              // K8s multi-error format: "... is invalid: [field1: msg1, field2: msg2]"
+              const match = cleaned.match(/^(.*?is invalid:)\s*\[(.+)\]\s*$/s);
+              if (match) {
+                const prefix = match[1];
+                const inner = match[2];
+                const bullets = inner
+                  .split(/,\s*(?=\w[\w./[\]]*:)/)
                   .map((s: string) => `• ${s.trim()}`)
-                  .join('\n')
-              )
-              .trim()
+                  .join('\n');
+                return `${prefix}\n${bullets}`.trim();
+              }
+              return cleaned.trim();
+            })()
           : rawMessage;
         if (originalMessage) {
           const separator = message ? (message.endsWith('.') ? ' ' : '. ') : '';

@@ -174,6 +174,70 @@ describe('clusterActionSlice', () => {
 
       expect(callback).toHaveBeenCalled();
     });
+
+    it('should strip regex suffix from Kubernetes API validation errors', async () => {
+      const callback = vi.fn(() => {
+        throw new Error(
+          `Unprocessable Entity - Deployment.apps "myapp" is invalid: ` +
+            `[metadata.labels: Invalid value: "bad val": a valid label must be alphanumeric, ` +
+            `regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?']`
+        );
+      });
+
+      const action: CallbackAction = {
+        callback,
+        errorMessage: 'Failed to apply.',
+        startOptions: {},
+        successOptions: { variant: 'success' },
+        errorOptions: { variant: 'error' },
+        cancelledOptions: {},
+      };
+
+      vi.useFakeTimers();
+      const dispatchedAction = store.dispatch(executeClusterAction(action));
+      vi.advanceTimersByTime(CLUSTER_ACTION_GRACE_PERIOD);
+      await dispatchedAction;
+
+      const actions = store.getActions();
+      const errorAction = actions.find(
+        a => a.type === updateClusterAction.type && a.payload?.state === 'error'
+      );
+      expect(errorAction?.payload?.message).not.toContain('regex used for validation');
+      expect(errorAction?.payload?.message).toContain('metadata.labels');
+    });
+
+    it('should format multi-error K8s validation list into bullet lines', async () => {
+      const callback = vi.fn(() => {
+        throw new Error(
+          `Unprocessable Entity - Deployment.apps "myapp" is invalid: ` +
+            `[spec.template.spec.containers[0].image: Invalid value: "bad image": invalid, ` +
+            `spec.selector: Invalid value: {}: field is immutable]`
+        );
+      });
+
+      const action: CallbackAction = {
+        callback,
+        errorMessage: 'Failed to apply.',
+        startOptions: {},
+        successOptions: { variant: 'success' },
+        errorOptions: { variant: 'error' },
+        cancelledOptions: {},
+      };
+
+      vi.useFakeTimers();
+      const dispatchedAction = store.dispatch(executeClusterAction(action));
+      vi.advanceTimersByTime(CLUSTER_ACTION_GRACE_PERIOD);
+      await dispatchedAction;
+
+      const actions = store.getActions();
+      const errorAction = actions.find(
+        a => a.type === updateClusterAction.type && a.payload?.state === 'error'
+      );
+      const msg: string = errorAction?.payload?.message ?? '';
+      expect(msg).toContain('• spec.template.spec.containers[0].image');
+      expect(msg).toContain('• spec.selector');
+      expect(msg.split('\n').length).toBeGreaterThan(1);
+    });
   });
 
   describe('updateClusterAction', () => {
